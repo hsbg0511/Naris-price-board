@@ -10,6 +10,7 @@
   --bg:#f6f6f4; --surface:#fcfcfb; --line:#e4e3de; --line2:#efeee9;
   --text:#0b0b0b; --text2:#52514e; --muted:#8a8984;
   --accent:#2a78d6; --good:#0d7a3e; --goodbg:#e6f4ec; --bad:#b42318; --badbg:#fdecea;
+  --low:#d92d20; --lowbg:#fdecea; --mine:#5b47c9; --minebg:#efecfd;
   --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#6250d6; --s8:#e34948;
 }
 @media (prefers-color-scheme:dark){
@@ -18,6 +19,7 @@
     --bg:#121211; --surface:#1a1a19; --line:#33332f; --line2:#262624;
     --text:#f0efec; --text2:#c3c2b7; --muted:#8f8e86;
     --accent:#3987e5; --good:#5fd08f; --goodbg:#163222; --bad:#ff8a80; --badbg:#3a1a17;
+    --low:#ff7b72; --lowbg:#3a1a17; --mine:#a99cf5; --minebg:#251f45;
     --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
   }
 }
@@ -38,14 +40,22 @@ th{color:var(--text2);font-weight:600;font-size:13px;background:var(--surface);p
 th:first-child,td:first-child{text-align:left;white-space:normal;min-width:170px}
 td .p{font-variant-numeric:tabular-nums;font-weight:600}
 td .m{display:block;font-size:11px;color:var(--muted)}
-td.low{background:var(--goodbg)}
-td.low .p{color:var(--good)}
+td.low{background:var(--lowbg)}
+td.low .p,td.minc .p{color:var(--low)}
+td.minc{font-weight:700}
+th.mine,td.mine{background:var(--minebg)}
+th.mine{color:var(--mine)}
+td.mine .p{color:var(--mine)}
+.tag.auto{border-color:var(--accent);color:var(--accent);font-size:10px}
+.adm td,.adm th{text-align:left}
+.adm input[type=text],.adm input:not([type]){width:100%;min-width:90px;padding:6px 8px}
+.adm td{white-space:normal}
 td a{color:inherit;text-decoration:none}
 td a:hover .p{text-decoration:underline}
 .old .p{color:var(--muted);font-weight:500}
 .tag{display:inline-block;font-size:11px;padding:0 6px;border-radius:6px;border:1px solid var(--line);color:var(--text2);margin-left:4px;font-weight:500}
 .tag.man{border-color:var(--s2);color:var(--text)}
-.diff-up{color:var(--bad)} .diff-dn{color:var(--good)}
+.diff-up{color:var(--low)} .diff-dn{color:var(--good)}
 form{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--text2);font-weight:600}
 input,select,textarea{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text)}
@@ -79,6 +89,7 @@ textarea{min-height:40px}
   <button data-t="input">수기 입력</button>
   <button data-t="flow">가격 흐름</button>
   <button data-t="log">입력 기록</button>
+  <button data-t="admin">품목·채널 관리</button>
 </nav>
 <main>
   <section id="t-now">
@@ -92,7 +103,7 @@ textarea{min-height:40px}
             <option value="30">최근 30일</option>
           </select>
         </label>
-        <span class="sub">칸마다 기간 안의 가장 최근 값. 초록 칸 = 품목별 최저가. <span class="tag man">수기</span> = 팀원 입력.</span>
+        <span class="sub">칸마다 기간 안의 가장 최근 값. <b style="color:var(--low)">빨간 칸</b> = 품목별 최저가, <b style="color:var(--mine)">보라 칸</b> = 내 판매가. <span class="tag man">수기</span> = 팀원 입력.</span>
       </div>
       <div class="tbl-wrap"><table id="nowTbl"></table></div>
     </div>
@@ -140,6 +151,26 @@ textarea{min-height:40px}
       <div class="tbl-wrap"><table id="logTbl"></table></div>
     </div>
   </section>
+
+  <section id="t-admin" class="hide">
+    <div class="card">
+      <div class="row">
+        <label style="flex-direction:row;align-items:center;gap:8px">관리자 코드 <input id="adminCode" autocomplete="off" style="width:140px"></label>
+        <span class="sub">품목·채널 추가/수정은 관리자 코드가 필요합니다. 수정 후 줄마다 [저장]을 누르세요.</span>
+      </div>
+      <div class="msg" id="amsg"></div>
+    </div>
+    <div class="card">
+      <b>품목</b>
+      <div class="sub" style="margin:4px 0 10px">검색어는 매일 자동 조회에 쓰입니다. 구성(수량·매수)까지 적으면 정확도가 올라갑니다. '표시'를 끄면 보드에서 숨깁니다(기록은 보존).</div>
+      <div class="tbl-wrap"><table class="adm" id="admProd"></table></div>
+    </div>
+    <div class="card">
+      <b>채널</b>
+      <div class="sub" style="margin:4px 0 10px">'자동 조회'가 켜진 채널은 매일 아침 자동으로 가격을 찾습니다. 검색 주소는 검색어가 끝에 붙는 형태(예: ...search?q=)로 적어 주세요.</div>
+      <div class="tbl-wrap"><table class="adm" id="admChan"></table></div>
+    </div>
+  </section>
 </main>
 
 <script>
@@ -154,7 +185,7 @@ const kstToday = () => new Date(Date.now() + 9*3600e3).toISOString().slice(0,10)
 const addDays = (d, n) => { const t = new Date(d + "T00:00:00Z"); t.setUTCDate(t.getUTCDate()+n); return t.toISOString().slice(0,10); };
 const store = { get(k){ try{return localStorage.getItem(k)}catch(e){return null} }, set(k,v){ try{localStorage.setItem(k,v)}catch(e){} } };
 
-let P = [], C = [], E = [], R = [];
+let PA = [], P = [], C = [], E = [], R = [];
 
 async function api(path){
   const r = await fetch(SUPABASE_URL + "/rest/v1/" + path, {headers: H});
@@ -170,19 +201,20 @@ async function rpc(fn, body){
 
 async function load(){
   const since = addDays(kstToday(), -120);
-  [P, C, E, R] = await Promise.all([
-    api("price_products?select=*&active=eq.true&order=sort"),
+  [PA, C, E, R] = await Promise.all([
+    api("price_products?select=*&order=sort"),
     api("price_channels?select=*&order=sort"),
     api("price_entries?select=*&date=gte." + since + "&order=date.desc,created_at.desc&limit=5000"),
     api("price_runs?select=*&order=date.desc&limit=1"),
   ]);
+  P = PA.filter(p => p.active !== false);
   const last = R[0];
   $("#sub").textContent = "마지막 자동 조회: " + (last ? new Date(last.checked_at).toLocaleString("ko-KR",{timeZone:"Asia/Seoul"}) : "없음") + " · 수기 입력 " + E.filter(e=>e.source==="manual").length + "건";
   $("#runNote").textContent = last ? last.note : "";
-  fillSelects(); renderNow(); renderFlow(); renderLog();
+  fillSelects(); renderNow(); renderFlow(); renderLog(); renderAdmin();
 }
 
-const pName = id => (P.find(p=>p.id===id)||{}).name || id;
+const pName = id => (PA.find(p=>p.id===id)||{}).name || id;
 const cName = id => (C.find(c=>c.id===id)||{}).name || id;
 const cColor = id => { const i = C.findIndex(c=>c.id===id); return "var(--s" + ((i<0?0:i)%8+1) + ")"; };
 
@@ -200,7 +232,7 @@ function fillSelects(){
 
 function renderNow(){
   const days = +$("#windowSel").value, today = kstToday(), from = addDays(today, -(days-1));
-  let h = `<thead><tr><th>품목</th>${C.map(c=>`<th>${esc(c.name)}</th>`).join("")}<th>최저가</th><th>내 판매가</th></tr></thead><tbody>`;
+  let h = `<thead><tr><th>품목</th>${C.map(c=>`<th>${esc(c.name)}${c.auto!==false?'<br><span class="tag auto" title="매일 아침 자동 조회">자동</span>':''}</th>`).join("")}<th>최저가</th><th class="mine">내 판매가</th></tr></thead><tbody>`;
   for(const p of P){
     const cells = C.map(c => E.find(e => e.product_id===p.id && e.channel_id===c.id && e.date>=from));
     const prices = cells.filter(Boolean).map(e=>e.price);
@@ -216,7 +248,7 @@ function renderNow(){
     });
     let diff = "";
     if(min!=null && p.my_price){ const d = p.my_price - min; diff = d>0 ? `<span class="m diff-up">최저가보다 +${won(d)}</span>` : d<0 ? `<span class="m diff-dn">최저가보다 ${won(d)}</span>` : `<span class="m">최저가와 같음</span>`; }
-    h += `<td><span class="p">${min!=null?won(min):"–"}</span></td><td><span class="p">${p.my_price?won(p.my_price):"–"}</span>${diff}</td></tr>`;
+    h += `<td class="minc"><span class="p">${min!=null?won(min):"–"}</span></td><td class="mine"><span class="p">${p.my_price?won(p.my_price):"–"}</span>${diff}</td></tr>`;
   }
   $("#nowTbl").innerHTML = h + "</tbody>";
 }
@@ -230,7 +262,7 @@ function renderFlow(){
     return {id:c.id, name:c.name, color:cColor(c.id), pts};
   }).filter(s => s.pts.some(v=>v!=null));
   const p = P.find(x=>x.id===pid);
-  $("#legend").innerHTML = series.map(s=>`<span style="--c:${s.color}">${esc(s.name)}</span>`).join("") + (p&&p.my_price?`<span style="--c:var(--muted)">내 판매가</span>`:"");
+  $("#legend").innerHTML = series.map(s=>`<span style="--c:${s.color}">${esc(s.name)}</span>`).join("") + (p&&p.my_price?`<span style="--c:var(--mine)">내 판매가</span>`:"");
   const box = $("#chart"); box.querySelectorAll("svg").forEach(n=>n.remove());
   if(!series.length){ $("#flowSub").textContent = "이 기간에 기록이 없습니다."; return; }
   $("#flowSub").textContent = "날짜별 채널 최저가(자동+수기). 비어 있는 날은 건너뛰고 선으로 이어 표시합니다.";
@@ -243,7 +275,7 @@ function renderFlow(){
   for(let k=0;k<=4;k++){ const v = lo + (hi-lo)*k/4; svg += `<line x1="${m.l}" x2="${W-m.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line2)"/><text x="${m.l-8}" y="${y(v)+4}" text-anchor="end" font-size="12" fill="var(--muted)">${won(Math.round(v/10)*10)}</text>`; }
   const step = Math.ceil(dates.length/8);
   dates.forEach((d,i)=>{ if((i%step===0 && dates.length-1-i >= step/2) || i===dates.length-1) svg += `<text x="${x(i)}" y="${Ht-8}" text-anchor="middle" font-size="12" fill="var(--muted)">${d.slice(5).replace("-","/")}</text>`; });
-  if(p&&p.my_price) svg += `<line x1="${m.l}" x2="${W-m.r}" y1="${y(p.my_price)}" y2="${y(p.my_price)}" stroke="var(--muted)" stroke-dasharray="5 5" stroke-width="1.5"/>`;
+  if(p&&p.my_price) svg += `<line x1="${m.l}" x2="${W-m.r}" y1="${y(p.my_price)}" y2="${y(p.my_price)}" stroke="var(--mine)" stroke-dasharray="5 5" stroke-width="2"/>`;
   series.forEach(s=>{
     const pts = s.pts.map((v,i)=>v==null?null:[x(i),y(v)]).filter(Boolean);
     svg += `<polyline fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" points="${pts.map(q=>q.join(",")).join(" ")}"/>`;
@@ -257,7 +289,7 @@ function renderFlow(){
     const i = Math.max(0, Math.min(dates.length-1, Math.round((sx-m.l)/((W-m.l-m.r)/Math.max(1,dates.length-1)))));
     xh.setAttribute("x1", x(i)); xh.setAttribute("x2", x(i)); xh.setAttribute("visibility","visible");
     const rows = series.map(s=>({s, v:s.pts[i]})).filter(o=>o.v!=null).sort((a,b)=>a.v-b.v);
-    tip.innerHTML = `<b>${dates[i]}</b>` + (rows.length ? rows.map(o=>`<div><span><i style="background:${o.s.color}"></i>${esc(o.s.name)}</span><span>${won(o.v)}</span></div>`).join("") : `<div>기록 없음</div>`) + (p&&p.my_price?`<div><span>내 판매가</span><span>${won(p.my_price)}</span></div>`:"");
+    tip.innerHTML = `<b>${dates[i]}</b>` + (rows.length ? rows.map(o=>`<div><span><i style="background:${o.s.color}"></i>${esc(o.s.name)}</span><span>${won(o.v)}</span></div>`).join("") : `<div>기록 없음</div>`) + (p&&p.my_price?`<div><span><i style="background:var(--mine)"></i>내 판매가</span><span>${won(p.my_price)}</span></div>`:"");
     tip.style.display = "block";
     const px = x(i) * r.width / W, left = px + 170 > r.width ? px - 170 : px + 12;
     tip.style.left = left + "px"; tip.style.top = "10px";
@@ -274,16 +306,49 @@ function renderLog(){
     rows.map(e=>`<tr><td>${esc(pName(e.product_id))}</td><td>${e.date}</td><td>${esc(cName(e.channel_id))}</td><td>${/^https?:\/\//.test(e.url||"")?`<a href="${esc(e.url)}" target="_blank" rel="noopener"><span class="p">${won(e.price)}</span></a>`:`<span class="p">${won(e.price)}</span>`}</td><td>${esc(e.seller||"")}</td><td>${e.source==="manual"?`<span class="tag man">수기</span> ${esc(e.reporter||"")}`:'<span class="tag">자동</span>'}</td><td style="white-space:normal;text-align:left;max-width:260px">${esc(e.memo||"")}</td><td><button class="btn ghost" data-del="${e.id}">삭제</button></td></tr>`).join("") + "</tbody>";
 }
 
+function renderAdmin(){
+  const prow = p => `<tr data-pid="${esc(p?p.id:"")}">
+    <td><input name="name" value="${esc(p?p.name:"")}" placeholder="품목명"></td>
+    <td><input name="keyword" value="${esc(p?p.keyword:"")}" placeholder="검색어"></td>
+    <td><input name="my_price" inputmode="numeric" value="${p&&p.my_price!=null?p.my_price:""}" placeholder="내 판매가" style="width:110px"></td>
+    <td style="text-align:center"><input type="checkbox" name="active" ${!p||p.active!==false?"checked":""}></td>
+    <td><button class="btn ghost" data-savep>${p?"저장":"추가"}</button></td></tr>`;
+  $("#admProd").innerHTML = `<thead><tr><th>품목명</th><th>검색어</th><th>내 판매가</th><th>표시</th><th></th></tr></thead><tbody>` + PA.map(prow).join("") + prow(null) + "</tbody>";
+  const crow = c => `<tr data-cid="${esc(c?c.id:"")}">
+    <td><input name="name" value="${esc(c?c.name:"")}" placeholder="채널명"></td>
+    <td><input name="search_url" value="${esc(c?c.search_url:"")}" placeholder="https://...검색주소?q="></td>
+    <td style="text-align:center"><input type="checkbox" name="auto" ${!c||c.auto!==false?"checked":""}></td>
+    <td><button class="btn ghost" data-savec>${c?"저장":"추가"}</button></td></tr>`;
+  $("#admChan").innerHTML = `<thead><tr><th>채널명</th><th>검색 주소</th><th>자동 조회</th><th></th></tr></thead><tbody>` + C.map(crow).join("") + crow(null) + "</tbody>";
+}
+async function adminSave(kind, tr){
+  const msg = $("#amsg"), code = $("#adminCode").value.trim(), v = n => tr.querySelector(`[name=${n}]`);
+  if(!code){ msg.className="msg err"; msg.textContent="관리자 코드를 먼저 입력해 주세요."; $("#adminCode").focus(); return; }
+  try{
+    if(kind==="p"){
+      const mp = String(v("my_price").value).replace(/[^0-9]/g,"");
+      await rpc("price_upsert_product", {p_code:code, p_id:tr.dataset.pid||null, p_name:v("name").value, p_keyword:v("keyword").value, p_my_price: mp?parseInt(mp,10):null, p_active:v("active").checked});
+    }else{
+      await rpc("price_upsert_channel", {p_code:code, p_id:tr.dataset.cid||null, p_name:v("name").value, p_search_url:v("search_url").value, p_auto:v("auto").checked});
+    }
+    store.set("adminCode", code);
+    msg.className="msg ok"; msg.textContent = `저장했습니다: ${v("name").value}`;
+    await load();
+  }catch(e){ msg.className="msg err"; msg.textContent = "저장 실패: " + e.message; }
+}
+
 document.addEventListener("click", async ev => {
   const t = ev.target;
   if(t.dataset.t){
     document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on", b===t));
-    ["now","input","flow","log"].forEach(k=>$("#t-"+k).classList.toggle("hide", k!==t.dataset.t));
+    ["now","input","flow","log","admin"].forEach(k=>$("#t-"+k).classList.toggle("hide", k!==t.dataset.t));
     store.set("tab", t.dataset.t);
     if(t.dataset.t==="flow") renderFlow();
   }
+  if(t.hasAttribute("data-savep")) return adminSave("p", t.closest("tr"));
+  if(t.hasAttribute("data-savec")) return adminSave("c", t.closest("tr"));
   if(t.dataset.del){
-    const code = prompt("관리자 코드를 입력하면 이 기록을 삭제합니다.");
+    const code = $("#adminCode").value.trim() || prompt("관리자 코드를 입력하면 이 기록을 삭제합니다.");
     if(!code) return;
     try{ await rpc("price_delete", {p_code: code, p_id: +t.dataset.del}); await load(); }
     catch(e){ alert("삭제 실패: " + e.message); }
@@ -313,6 +378,7 @@ $("#f").addEventListener("submit", async ev => {
   f.date.value = kstToday();
   f.reporter.value = store.get("reporter") || "";
   f.code.value = store.get("code") || "";
+  $("#adminCode").value = store.get("adminCode") || "";
   const tab = store.get("tab"); if(tab){ const b = document.querySelector(`nav button[data-t="${tab}"]`); if(b) b.click(); }
   load().catch(e => { $("#sub").textContent = "데이터를 불러오지 못했습니다: " + e.message; });
 })();
